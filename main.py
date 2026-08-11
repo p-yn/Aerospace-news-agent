@@ -1,5 +1,5 @@
 
-Heliofold news agent · PY
+# Heliofold news agent
 import hashlib
 import json
 from typing import List
