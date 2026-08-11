@@ -1,5 +1,3 @@
-
-# Heliofold news agent
 import hashlib
 import json
 from typing import List
@@ -388,12 +386,12 @@ def render_masthead():
 # Rendering
 # ---------------------------------------------------------------------------
  
-def render_item(item: NewsItem, watchlist_by_title: dict, platform: str):
+def render_item(item: NewsItem, watchlist_by_title: dict, platform: str, context: str = ""):
     accent = RATING_ACCENT.get(item.relevance_rating, "#999")
     label = RATING_LABEL.get(item.relevance_rating, "")
     matches = (watchlist_by_title or {}).get(item.title, [])
  
-    key = item_key(item)
+    key = f"{context}_{item_key(item)}"
  
     st.markdown(f'<div class="hf-card" style="--accent:{accent};">', unsafe_allow_html=True)
  
@@ -443,15 +441,15 @@ def render_item(item: NewsItem, watchlist_by_title: dict, platform: str):
 def render_briefing(briefing: DailyBriefing, watchlist_by_title: dict, platform: str):
     if briefing.top_priorities:
         st.markdown('<div class="hf-section-label">Top 3 Priorities Today</div>', unsafe_allow_html=True)
-        for item in briefing.top_priorities:
-            render_item(item, watchlist_by_title, platform)
+        for i, item in enumerate(briefing.top_priorities):
+            render_item(item, watchlist_by_title, platform, context=f"top{i}")
  
-    for section in briefing.sections:
+    for s_idx, section in enumerate(briefing.sections):
         if not section.items:
             continue
         st.markdown(f'<div class="hf-section-label">{section.section_title}</div>', unsafe_allow_html=True)
-        for item in section.items:
-            render_item(item, watchlist_by_title, platform)
+        for i, item in enumerate(section.items):
+            render_item(item, watchlist_by_title, platform, context=f"sec{s_idx}_{i}")
  
  
 def briefing_to_plain_text(briefing: DailyBriefing) -> str:
@@ -579,4 +577,3 @@ def main():
  
 if __name__ == "__main__":
     main()
- 
