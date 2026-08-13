@@ -1,5 +1,8 @@
+streamlit
+google-genai
+pydantic
 feedparser
 beautifulsoup4
-google-genai
-streamlit
-fpdf2
+fpdf
+pytz
+APScheduler
