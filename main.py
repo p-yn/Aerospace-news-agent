@@ -24,15 +24,54 @@ client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
  
 WATCHLIST = {
     "Competitors": [
-        "Solestial",
-        # add more competitors here, e.g. "Company Name",
+        "Solestial", #[cite: 2]
+        "Ascent Solar Technologies", #[cite: 2]
+        "mPower Technology", #[cite: 2]
+        "PowerFilm Solar", #[cite: 2]
+        "Swift Solar", #[cite: 2]
+        "Arinna", #[cite: 2]
+        "Merlin Solar", #[cite: 2]
+        "MicroLink Devices", #[cite: 2]
+        "Tandem PV", #[cite: 2]
+        "Source Energy Company", #[cite: 2]
+        "Spectrolab", #[cite: 2]
+        "SolAero", #[cite: 2]
+        "MiaSolé", #[cite: 2]
+        "Flexell Space", #[cite: 2]
+        "Active Surfaces", #[cite: 2]
     ],
     "Customers & Prospects": [
         "K2 Space",
+        "spaceX",
         "NLR",
         "Texas A&M",
         "Caltech",
-        # add more named prospects/customers here
+        "Jet Propulsion Laboratory", #[cite: 1]
+        "JPL", #[cite: 1]
+        "Glenn Research Center", #[cite: 1]
+        "NASA Ames Research Center", #[cite: 1]
+        "Opterus R&D", #[cite: 1]
+        "National Renewable Energy Laboratory", #[cite: 1]
+        "NREL", #[cite: 1]
+        "MMA Space", #[cite: 2]
+        "Starpath", #[cite: 2]
+        "Deployable Space Systems", #[cite: 2]
+        "Redwire", #[cite: 2]
+        "Star Catcher Industries", #[cite: 2]
+        "University Nanosatellite Program", #[cite: 3]
+        "CubeSat Launch Initiative", #[cite: 3]
+    ],
+    "Material Suppliers & Partners": [
+        "NeXolve", #[cite: 1, 2]
+        "Applied Aerospace", #[cite: 1, 2]
+        "Sheldahl", #[cite: 2]
+        "DUNMORE", #[cite: 2]
+        "Fralock", #[cite: 2]
+        "Flexible Circuit Technologies", #[cite: 2]
+        "Axiom Materials", #[cite: 2]
+        "Hexcel Corporation", #[cite: 2]
+        "Kaneka Aerospace", #[cite: 2]
+        "Toray Group", #[cite: 2]
     ],
     "Materials & Products": [
         "cover glass",
@@ -45,6 +84,14 @@ WATCHLIST = {
         "flexible solar array",
         "flexible solar panel",
         "bifacial solar",
+        "CIGS", #[cite: 2]
+        "perovskite", #[cite: 2]
+        "GaAs", #[cite: 2]
+        "CP1", #[cite: 2]
+        "multijunction", #[cite: 2]
+        "thin-film", #[cite: 2]
+        "DragonSCALES", #[cite: 2]
+        "ROSA", #[cite: 2]
     ],
 }
  
@@ -141,9 +188,9 @@ FEEDS = [
     "https://www.nasaspaceflight.com/feed/",
     "https://www.space.com/feeds.xml",
     "https://spaceq.ca/feed/",
-    "https://www.parabolicarc.com/feed/",
     "https://payloadspace.com/feed/",
     "https://europeanspaceflight.com/feed/",
+    "https://spacedaily.com/",
  
     # NASA official
     "https://www.nasa.gov/feed/",
@@ -225,9 +272,24 @@ def generate_social_post(item: NewsItem, connection_idea: str, platform: str) ->
     so the post stays tightly focused instead of a generic company blurb."""
     if platform == "LinkedIn":
         style_notes = (
-            "LinkedIn tone: professional but personable, 3-5 short paragraphs or a short "
-            "paragraph plus a few line breaks, can end with a light question or takeaway. "
-            "Max 3 hashtags at the very end. Put the source link on its own line at the end."
+            "Use a B2B LinkedIn structure that feels like an industry insight rather"
+            " than an advertisement. Start with a strong 1–2 sentence hook that creates curiosity "
+            "by highlighting a surprising finding, challenging an assumption, or raising an important "
+            "industry question. Then briefly explain the news or development and why it matters, without "
+            "simply summarizing the source. Next, transition into the broader engineering or industry "
+            "challenge created by the development, using this section to demonstrate technical expertise"
+            " and provide meaningful insight. After establishing the problem or opportunity, naturally "
+            "connect it to Heliofold US by explaining how its technology, materials, or capabilities are "
+            "relevant to that specific challenge; do not force a Heliofold connection if the topic is genuinely "
+            "unrelated, and never make unsupported claims. End with a forward-looking takeaway about where the "
+            "industry is heading, followed by a thoughtful question that encourages engineers, researchers, or "
+            "industry professionals to engage in the discussion. Keep the tone professional, technical, "
+            "insightful, and human rather than promotional or corporate. The overall flow should be: "
+            "Hook → News/Context → Why It Matters → Engineering Insight → Natural Heliofold US Connection → "
+            "Forward-Looking Takeaway → Engaging Question. Maximum 150 words"
+            "Tone: Professional but human, written from the perspective of Paul Zhu, International Project "
+            "Director at Heliofold. Avoid excessive emojis and generic corporate language. Never make unsupported "
+            "claims about Heliofold. Max 2 hashtags at the end. Put the source link on its own line at the end."
         )
     else:
         style_notes = (
