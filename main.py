@@ -212,6 +212,7 @@ def generate_social_post(item: NewsItem, connection_idea: str, platform: str) ->
 "- Is the CTA a specific action, not just a question?\n"
 "- Is there exactly one link (flagged separately for the comment) and ≤3 non-redundant hashtags?\n\n"
 "Tone: Professional but human, written from the perspective of Paul Zhu, International Project Director at Heliofold. Avoid excessive emojis and generic corporate language. Never make unsupported claims about Heliofold."
+        )
     else:
         style_notes = (
             "X (Twitter) tone: punchy, technical, under 280 characters total including the link. "
