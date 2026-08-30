@@ -196,12 +196,22 @@ def generate_daily_report(all_news_text) -> DailyBriefing:
 def generate_social_post(item: NewsItem, connection_idea: str, platform: str) -> str:
     if platform == "LinkedIn":
         style_notes = (
-            "LinkedIn Guidelines (Maximum 200 words):\n"
-            "1. Hook: Start with a strong, attention-grabbing opening about this specific development. Do not use generic openings like 'Exciting news in the space industry.'\n"
-            "2. Body: Briefly explain the development and why it matters to the industry. Do not just summarize the article; add context. Make it understandable to a professional audience without excessive technical jargon.\n"
-            "3. Ending: Provide a meaningful takeaway or forward-looking thought. Whenever naturally relevant, connect the development to Heliofold US (space technology, advanced materials, solar cells, lightweight power systems, or space infrastructure). The connection must feel natural and meaningful, not like an advertisement. If the news is genuinely unrelated, do not force a connection; end with a relevant industry takeaway instead.\n\n"
-            "Tone: Professional but human, written from the perspective of Paul Zhu, International Project Director at Heliofold. Avoid excessive emojis and generic corporate language. Never make unsupported claims about Heliofold. Max 2 hashtags at the end. Put the source link on its own line at the end."
-        )
+           "LinkedIn Guidelines (Maximum 100 words):\n"
+"Follow this structure, in order:\n"
+"1. Hook: A non-technical, concrete news hook, an industry milestone, launch, or announcement. Prefer specific numbers/milestones (e.g. '100th launch this year') over abstract big numbers (e.g. '$100B expansion'), concrete milestones perform better. The first line must be a strong stopper on its own, LinkedIn truncates after 2-3 lines, so it needs to earn the 'see more' click without relying on what follows.\n"
+"2. Reframe: One sentence that reframes the news into a sharp, non-obvious insight. Avoid generic causal chains like 'more launches → satellites need power → we make power systems,' which could apply to almost any component. The reframe should say something a reader wouldn't have already assumed.\n"
+"3. Technical differentiator: One clear, specific claim about Bifacia (or the relevant product), tied directly back to the stress or problem named in the hook. Name the actual mechanism, dual-sided power collection, thermal stability, mass savings, not just 'our product is great.' Whenever naturally relevant, connect the development to Heliofold US this way. If the news is genuinely unrelated to our space, do not force a connection, end with a relevant industry takeaway instead.\n"
+"4. CTA: Short, with a specific next step, not vague curiosity-bait. 'Send us your stack spec, we'll tell you the wattage gain' is better than 'Curious how this fits your next batch?'\n\n"
+"Formatting rules:\n"
+"- Links go in the first comment, never in the post body. Note the source link separately so it can be posted as a reply.\n"
+"- Max 3 hashtags, and each must add distinct value, don't duplicate near-synonyms (e.g. not both #SpaceInfrastructure and #SpaceSolar in the same post).\n\n"
+"Before finalizing, check:\n"
+"- Does the hook use a concrete number/milestone rather than an abstract one?\n"
+"- Does the reframe say something non-obvious, not just a logical restatement?\n"
+"- Is the technical claim tied specifically to the problem named in the hook, not generic?\n"
+"- Is the CTA a specific action, not just a question?\n"
+"- Is there exactly one link (flagged separately for the comment) and ≤3 non-redundant hashtags?\n\n"
+"Tone: Professional but human, written from the perspective of Paul Zhu, International Project Director at Heliofold. Avoid excessive emojis and generic corporate language. Never make unsupported claims about Heliofold."
     else:
         style_notes = (
             "X (Twitter) tone: punchy, technical, under 280 characters total including the link. "
