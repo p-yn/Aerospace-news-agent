@@ -1,16 +1,12 @@
 import hashlib
 import json
 import os
-import atexit
 import time
 from datetime import datetime
 from typing import List
 
-import feedparser
 import pytz
 import streamlit as st
-from apscheduler.schedulers.background import BackgroundScheduler
-from bs4 import BeautifulSoup
 from fpdf import FPDF
 from google import genai
 from google.genai import types
@@ -22,49 +18,8 @@ client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
 # ---------------------------------------------------------------------------
 # Configuration & Storage
 # ---------------------------------------------------------------------------
-REPORT_FILE = "latest_briefing.json"
+REPORT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "latest_briefing.json")
 LOCAL_TIMEZONE = "America/Vancouver"
-
-# ---------------------------------------------------------------------------
-# Watchlist
-# ---------------------------------------------------------------------------
-WATCHLIST = {
-    "Competitors": [
-        "Solestial", "Ascent Solar Technologies", "mPower Technology",
-        "PowerFilm Solar", "Swift Solar", "Arinna", "Merlin Solar",
-        "MicroLink Devices", "Tandem PV", "Source Energy Company",
-        "Spectrolab", "SolAero", "MiaSolé", "Flexell Space", "Active Surfaces",
-    ],
-    "Customers & Prospects": [
-        "K2 Space", "spaceX", "NLR", "Texas A&M", "Caltech",
-        "Jet Propulsion Laboratory", "JPL", "Glenn Research Center",
-        "NASA Ames Research Center", "Opterus R&D", "National Renewable Energy Laboratory",
-        "NREL", "MMA Space", "Starpath", "Deployable Space Systems", "Redwire",
-        "Star Catcher Industries", "University Nanosatellite Program", "CubeSat Launch Initiative",
-    ],
-    "Material Suppliers & Partners": [
-        "NeXolve", "Applied Aerospace", "Sheldahl", "DUNMORE", "Fralock",
-        "Flexible Circuit Technologies", "Axiom Materials", "Hexcel Corporation",
-        "Kaneka Aerospace", "Toray Group",
-    ],
-    "Materials & Products": [
-        "cover glass", "polyimide film", "colorless polyimide", "HJT solar cell",
-        "heterojunction solar cell", "space-grade adhesive", "solar blanket",
-        "flexible solar array", "flexible solar panel", "bifacial solar", "CIGS",
-        "perovskite", "GaAs", "CP1", "multijunction", "thin-film", "DragonSCALES", "ROSA",
-    ],
-}
-
-def find_watchlist_matches(text: str):
-    if not text:
-        return []
-    lowered = text.lower()
-    matches = []
-    for category, terms in WATCHLIST.items():
-        for term in terms:
-            if term.lower() in lowered:
-                matches.append((category, term))
-    return matches
 
 # ---------------------------------------------------------------------------
 # Structured Output Schemas
@@ -86,112 +41,10 @@ class DailyBriefing(BaseModel):
     sections: List[Section]
     top_priorities: List[NewsItem]
 
-SYSTEM_INSTRUCTION = (
-    "You are the market intelligence analyst assisting Paul Zhu, International Project "
-    "Director at Heliofold, an aerospace materials and space solar technology enterprise. "
-    "Heliofold sources from a manufacturing base in China and supplies North American satellite "
-    "builders, university labs, and research programs with: Ce-UTG cover glass (radiation-hardened "
-    "cell protection), SCPI colorless polyimide film (flexible transparent substrates), "
-    "polyamic acid (PAA) resins, P-type HJT solar cells, and space-grade silicone adhesives. "
-    "Heliofold also actively tracks the orbital degradation and commercial viability of space-based "
-    "perovskite solar cells. Heliofold's long-term goal is a double-sided, transparent, flexible "
-    "solar blanket that fuses these product lines into one laminate.\n\n"
-    "Heliofold's current and target customers include organizations like K2 Space, NLR, "
-    "Texas A&M, and Caltech, and its broader market includes satellite manufacturers, "
-    "constellation operators, university satellite programs, and space agencies. A known "
-    "competitor is Solestial.\n\n"
-    "I will give you a list of today's aerospace, solar, and AI news. Read all of it and "
-    "organize it into a Daily Briefing using the required JSON schema. Rules:\n"
-    "1. Group items into sections such as Satellite & Spacecraft, Solar & Materials, "
-    "AI & Autonomy, Industry & Funding — only include sections that have items.\n"
-    "2. Each item's summary should be 2-3 plain-text sentences, no markdown formatting.\n"
-    "3. key_points: extract 3-5 short, concrete facts from the article as separate short "
-    "phrases (not full sentences with the summary repeated) — numbers, names, dates, "
-    "outcomes. These should let someone skim the gist without reading the summary.\n"
-    "4. connection_ideas: give exactly 5 distinct, concrete ways this article could connect "
-    "to Heliofold. Vary the angle across the 5 — for example one about a product line fit "
-    "(cover glass / polyimide film / PAA / HJT / perovskite), one about production, logistics, or US-China supply "
-    "chain, one about a potential customer or partnership, one about competitive positioning, "
-    "and one about R&D direction. Each should be a single specific sentence, "
-    "not generic ('this could be relevant to our market').\n"
-    "5. Rate every item's relevance to Heliofold from 1 to 5: "
-    "5 = directly actionable (a named potential customer, competitor, or supply chain event), "
-    "4 = strong strategic relevance (market trend directly touching Heliofold's product lines), "
-    "3 = moderately relevant (general space/solar industry movement worth awareness), "
-    "2 = tangential (adjacent field, limited direct impact), "
-    "1 = background noise (interesting but not actionable for Heliofold).\n"
-    "6. Give a one-sentence reason for each rating.\n"
-    "7. Always include the original URL exactly as provided.\n"
-    "8. Keep each item's title EXACTLY as given in the source text (do not reword or "
-    "shorten it) so it can be matched back to the original article.\n"
-    "9. Some articles will include a line like '[WATCHLIST MATCH: Competitors - Solestial]' "
-    "— this means the article mentions a term Heliofold specifically tracks (a named "
-    "competitor, customer/prospect, or core material/product). Treat any watchlist match as "
-    "a strong signal and rate it 4 or 5 unless the mention is clearly trivial or unrelated "
-    "to Heliofold's business despite the keyword appearing.\n"
-    "10. In top_priorities, list only the 3 highest-rated items across the whole briefing, "
-    "in descending order of rating."
-)
-
-FEEDS = [
-    "https://spacenews.com/feed/",
-    "https://www.nasaspaceflight.com/feed/",
-    "https://www.space.com/feeds.xml",
-    "https://spaceq.ca/feed/",
-    "https://payloadspace.com/feed/",
-    "https://europeanspaceflight.com/feed/",
-    "https://www.nasa.gov/feed/",
-    "https://www.solarpowerworldonline.com/feed/",
-    "https://pv-magazine-usa.com/feed/",
-    "https://www.pv-tech.org/feed/",
-    "https://techcrunch.com/category/artificial-intelligence/feed/",
-    "https://spectrum.ieee.org/rss/aerospace",
-]
-
 RATING_LABEL = {5: "Critical", 4: "High", 3: "Moderate", 2: "Low", 1: "Background"}
 RATING_ACCENT = {5: "#8a1f2d", 4: "#b9862f", 3: "#5c6b73", 2: "#8a8a8a", 1: "#bcbcbc"}
 BRAND_NAVY = "#0b1f3a"
 BRAND_GOLD = "#c9a227"
-
-def clean_html(raw_html):
-    if not raw_html:
-        return ""
-    return BeautifulSoup(raw_html, "html.parser").get_text(separator=" ", strip=True)
-
-def fetch_feed_entries(feed_url, limit=4):
-    try:
-        feed = feedparser.parse(feed_url)
-        if feed.bozo and not feed.entries:
-            return []
-        return feed.entries[:limit]
-    except Exception:
-        return []
-
-def generate_daily_report(all_news_text) -> DailyBriefing:
-    prompt = f"Here is today's news:\n\n{all_news_text}\n\nPlease build the Daily Briefing."
-    
-    # Retry mechanism for 503 High Demand errors
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
-                    temperature=0.3,
-                    response_mime_type="application/json",
-                    response_schema=DailyBriefing,
-                ),
-            )
-            if getattr(response, "parsed", None) is not None:
-                return response.parsed
-            return DailyBriefing(**json.loads(response.text))
-        except Exception as e:
-            if "503" in str(e) and attempt < max_retries - 1:
-                time.sleep(2 * (attempt + 1))
-                continue
-            raise e
 
 def generate_social_post(item: NewsItem, connection_idea: str, platform: str) -> str:
     if platform == "LinkedIn":
@@ -250,54 +103,9 @@ def item_key(item: NewsItem) -> str:
 # ---------------------------------------------------------------------------
 # Background Task & Storage Handlers
 # ---------------------------------------------------------------------------
-def execute_report_generation():
-    compiled_news = ""
-    watchlist_by_title = {}
-
-    for feed_url in FEEDS:
-        entries = fetch_feed_entries(feed_url)
-        for entry in entries:
-            title = entry.get("title", "No Title")
-            link = entry.get("link", "")
-            summary_html = entry.get("summary", "")
-            clean_summary = clean_html(summary_html)
-
-            matches = find_watchlist_matches(f"{title} {clean_summary}")
-            if matches:
-                watchlist_by_title[title] = matches
-
-            compiled_news += f"Title: {title}\nSummary: {clean_summary}\nLink: {link}\n"
-            if matches:
-                match_str = ", ".join(f"{cat} - {term}" for cat, term in matches)
-                compiled_news += f"[WATCHLIST MATCH: {match_str}]\n"
-            compiled_news += "\n"
-
-    try:
-        briefing = generate_daily_report(compiled_news)
-        tz = pytz.timezone(LOCAL_TIMEZONE)
-        data = {
-            "date": datetime.now(tz).strftime("%Y-%m-%d"),
-            "timestamp": datetime.now(tz).strftime("%I:%M %p"),
-            "briefing": briefing.model_dump() if hasattr(briefing, 'model_dump') else briefing.dict(),
-            "watchlist_by_title": watchlist_by_title
-        }
-        with open(REPORT_FILE, "w") as f:
-            json.dump(data, f)
-    except Exception as e:
-        print(f"Failed to generate automated report: {e}")
-
-@st.cache_resource
-def start_scheduler():
-    tz = pytz.timezone(LOCAL_TIMEZONE)
-    scheduler = BackgroundScheduler(timezone=tz)
-    scheduler.add_job(execute_report_generation, 'cron', hour=8, minute=0)
-    scheduler.start()
-    atexit.register(lambda: scheduler.shutdown(wait=False))
-    return scheduler
-
 def load_latest_report():
     if os.path.exists(REPORT_FILE):
-        with open(REPORT_FILE, "r") as f:
+        with open(REPORT_FILE, "r", encoding="utf-8") as f:
             return json.load(f)
     return None
 
@@ -545,11 +353,9 @@ def main():
     inject_style()
     render_masthead()
 
-    start_scheduler()
-
     st.write(
-        "Automatically pulls today's space, solar, and AI news, rates each item for relevance to "
-        "Heliofold, and lets you draft ready-to-post LinkedIn or X content directly from key topics."
+        "Displays the daily space, solar, and AI briefing generated independently by GitHub Actions, "
+        "and lets you draft ready-to-post LinkedIn or X content from key topics."
     )
     
     tz = pytz.timezone(LOCAL_TIMEZONE)
@@ -579,17 +385,10 @@ def main():
             mime="application/pdf",
         )
     else:
-        st.warning("No reports have been generated yet. Click below to generate the first report.")
-
-    with st.expander("Admin Controls"):
-        if st.button("Force Generate Report Now"):
-            with st.spinner("Compiling feeds and generating report (this may take a moment)..."):
-                try:
-                    execute_report_generation()
-                    st.success("Report generated successfully!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error generating report: {e}")
+        st.warning(
+            "No report is available yet. The daily report is generated by GitHub Actions; "
+            "check the repository's Actions tab if it has not appeared."
+        )
 
 if __name__ == "__main__":
     main()

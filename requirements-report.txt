@@ -1,0 +1,5 @@
+google-genai
+pydantic
+feedparser
+beautifulsoup4
+pytz
