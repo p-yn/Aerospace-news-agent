@@ -175,9 +175,16 @@ def compile_news():
     return "\n".join(compiled_news), watchlist_by_title
 
 
+# Gemini sometimes returns 503 "high demand" for several minutes at a time.
+# Retry transient server errors with growing waits (~10 min total) before giving up.
+RETRYABLE_ERRORS = ("503", "500", "UNAVAILABLE", "INTERNAL", "DEADLINE_EXCEEDED")
+RETRY_WAITS_SECONDS = [30, 60, 120, 180, 240]
+
+
 def generate_daily_report(client, all_news_text: str) -> DailyBriefing:
     prompt = f"Here is today's news:\n\n{all_news_text}\n\nPlease build the Daily Briefing."
-    for attempt in range(3):
+    last_error = None
+    for attempt in range(len(RETRY_WAITS_SECONDS) + 1):
         try:
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
@@ -193,10 +200,18 @@ def generate_daily_report(client, all_news_text: str) -> DailyBriefing:
                 return response.parsed
             return DailyBriefing(**json.loads(response.text))
         except Exception as error:
-            if "503" in str(error) and attempt < 2:
-                time.sleep(2 * (attempt + 1))
+            last_error = error
+            retryable = any(code in str(error) for code in RETRYABLE_ERRORS)
+            if retryable and attempt < len(RETRY_WAITS_SECONDS):
+                wait = RETRY_WAITS_SECONDS[attempt]
+                logging.warning(
+                    "Gemini unavailable (attempt %d/%d), retrying in %ds: %s",
+                    attempt + 1, len(RETRY_WAITS_SECONDS) + 1, wait, error,
+                )
+                time.sleep(wait)
                 continue
             raise
+    raise last_error
 
 
 def save_report(data):
